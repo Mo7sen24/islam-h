@@ -638,6 +638,8 @@ html.so #fog i{animation-play-state:paused!important}
 (function(){
   // === بيانات الدعوة: غيّرها من هنا بس ===
   var C={n1:'Islam',n2:'H',date:'2026-11-13T19:00',venue:'Mohamed Mabrouk Street',city:'Beshtil',phone:'',
+    /* رابط Google Apps Script (Web App) اللي بينتهي بـ /exec — الصقه بين العلامتين */
+    sheet:'',
     prog:[['7:00 PM','Guests arrive'],['8:00 PM','Couple’s entrance'],['9:00 PM','Dinner'],['10:00 PM','Celebration']]};
   var $=function(i){return document.getElementById(i)},L='en-US',D=new Date(C.date),
       N=function(x){return x.toLocaleString(L,{useGrouping:false})},P=function(x){return(x<10?'0':'')+x};
@@ -647,7 +649,7 @@ html.so #fog i{animation-play-state:paused!important}
   $('my').textContent=D.toLocaleDateString(L,{month:'long',year:'numeric'});
   $('tm').textContent='At '+ti;$('nd').textContent=dl;$('dl').textContent=dl;
   $('vn').textContent=C.venue;$('vc').textContent=C.city;$('vt').textContent='Starting at '+ti;$('p3v').textContent=C.venue+' · '+C.city;
-  $('map').href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(C.venue+', '+C.city+', Egypt');
+  $('map').href='https://maps.google.com/?q=30.084284,31.188805';
   var F=function(d){return d.getFullYear()+P(d.getMonth()+1)+P(d.getDate())+'T'+P(d.getHours())+P(d.getMinutes())+'00'},E=new Date(D.getTime()+4*36e5),
       T='Wedding of '+C.n1+' & '+C.n2,V=C.venue+' '+C.city;
   $('cal').href='https://calendar.google.com/calendar/render?action=TEMPLATE&text='+encodeURIComponent(T)+'&dates='+F(D)+'/'+F(E)+'&location='+encodeURIComponent(V);
@@ -658,12 +660,22 @@ html.so #fog i{animation-play-state:paused!important}
     for(var i=0;i<4;i++)if(v[i]!==last[i]){var e=$('cd'+i);e.textContent=N(v[i]);last[i]=v[i]}}
   cd();setInterval(cd,1000);
   var tt;function toast(m){var t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(function(){t.classList.remove('on')},3200)}
-  function rs(ok){var el=$('rn'),n=el.value.trim();
+  var busy=false;
+  function lockBtns(b){['ry','rx'].forEach(function(id){var e=$(id);e.disabled=b;e.style.opacity=b?.55:''})}
+  function rs(ok){
+    if(busy)return;
+    var el=$('rn'),n=el.value.trim().slice(0,80);
     if(!n){el.classList.remove('bad');void el.offsetWidth;el.classList.add('bad');el.focus();toast('Please enter your name first');return}
-    var m='Hello, this is '+n+(ok?'. I would be delighted to confirm my attendance':'. I regret that I am unable to attend')+' at the wedding of '+C.n1+' & '+C.n2+(ok?'. Number of guests: '+$('rg').value:'')+'.';
-    var w=$('rm').value.trim();if(w)m+=' My message for you: '+w;
-    toast('Opening WhatsApp…');
-    window.open('https://wa.me/'+C.phone.replace(/\D/g,'')+'?text='+encodeURIComponent(m),'_blank')}
+    if(!C.sheet){toast('RSVP is not connected yet');return}
+    var data={name:n,attending:ok?'Yes':'No',guests:ok?(parseInt($('rg').value,10)||1):0,message:$('rm').value.trim().slice(0,300),sent:new Date().toISOString()};
+    busy=true;lockBtns(true);toast('Sending…');
+    var ctl=window.AbortController?new AbortController():null,to=setTimeout(function(){if(ctl)ctl.abort()},20000);
+    fetch(C.sheet,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(data),signal:ctl?ctl.signal:undefined})
+      .then(function(){clearTimeout(to);
+        toast(ok?'Thank you! See you soon ♥':'Thank you for letting us know');
+        [$('rn'),$('rg'),$('rm')].forEach(function(e){e.disabled=true})})
+      .catch(function(){clearTimeout(to);busy=false;lockBtns(false);toast('Could not send. Please try again')});
+  }
   $('ry').onclick=function(){rs(1)};$('rx').onclick=function(){rs(0)};
   $('rn').addEventListener('animationend',function(){this.classList.remove('bad')});
   var o=document.querySelectorAll('.orn');for(var i=1;i<o.length;i++)o[i].src=o[0].src;
